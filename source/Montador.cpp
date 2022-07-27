@@ -41,7 +41,6 @@ bool achadoNoMap(string token, unordered_map<string, string> map)
 
 bool characterInvalido(string token)
 {
-  cout << token << endl;
   if (token[0] >= 48 && token[0] <= 57)
     return true;
 
@@ -57,7 +56,8 @@ bool naoNumero(string token)
 {
   if (token[0] == '0' && token[1] == 'x')
   {
-    if (token.size() <= 2) return true;
+    if (token.size() <= 2)
+      return true;
     token.erase(0, 1);
     for (int i = 0; i < token.size(); i++)
     {
@@ -256,6 +256,7 @@ void segundaPassagem(
   vector<string> sequenciaLinhaToken;
   vector<int> codigoObjeto;
   int contadorLinha = 0, contadorPosicao = 0, simbolosNaLinha = 0;
+  unordered_map<string, vector<int>> tabelaUso;
 
   while (getline(file, aux))
   {
@@ -275,7 +276,9 @@ void segundaPassagem(
     for (int j = 0; j < sequenciaLinhaToken.size(); j++)
     {
       token = sequenciaLinhaToken[j];
-
+      if (token[token.size()-1] == ',') token.erase(token.size() - 1);
+      cout << i + 1 << " " << token << endl;
+      cout << contadorPosicao << endl;
       // caso label
       if (token[token.size() - 1] == ':')
       {
@@ -301,7 +304,6 @@ void segundaPassagem(
         }
         codigoObjeto.push_back(tabelaInstrucoes.at(token).first);
         contadorPosicao += tabelaInstrucoes.at(token).second;
-        break;
       }
       else if (tabelaDiretiva.find(token) != tabelaDiretiva.end())
       {
@@ -320,6 +322,7 @@ void segundaPassagem(
         }
         if (token == "const")
         {
+          cout << "entrou no const\n";
           if (simbolosNaLinha != 2)
           {
             cout << "Erro sintático"
@@ -351,6 +354,21 @@ void segundaPassagem(
                << ": "
                << "Char inválido usado em " << token << endl;
         }
+        if (tabelaSimbolos.at(token).second)
+        {
+          if (tabelaUso.find(token) == tabelaUso.end())
+          { // novo caso
+            vector<int> aux;
+            aux.push_back(contadorPosicao);
+            tabelaUso.emplace(token, aux);
+          }
+          else
+          { // já presente na tabela de uso
+            tabelaUso.at(token).push_back(contadorPosicao);
+          }
+        }
+        codigoObjeto.push_back(tabelaSimbolos.at(token).first);
+        cout << "simbolo: " << token << " " << contadorPosicao << endl;
       }
       else
       {
@@ -364,9 +382,40 @@ void segundaPassagem(
         break;
       }
     }
-    cout << i + 1 << " " << token << endl;
-    cout << contadorPosicao << endl;
   }
+
+  // cout << "Codigo objeto: \n";
+  // for (auto x : codigoObjeto)
+  //   cout << x << " ";
+  // cout << endl;
+
+  // impressão da tabela de uso
+  // cout << "Tabela de uso" << endl;
+  // for (auto x : tabelaUso) {
+  //   cout << x.first << " ";
+  //   for (auto y : x.second) cout << y << " ";
+  //   cout << endl;
+  // }
+
+  novoArquivo << "TABELA USO" << "\n";
+  for (auto x : tabelaUso)
+  {
+    for (auto y : x.second)
+    {
+      novoArquivo << x.first << " ";
+      novoArquivo << y << "\n";
+    }
+  }
+
+  novoArquivo << "\n";
+  novoArquivo << "TABELA DEF" << "\n";
+  for (auto x : tabelaDefinicao)
+    novoArquivo << x.first << " " << x.second << "\n";
+
+  novoArquivo << "\n";
+
+  for (auto x : codigoObjeto)
+    novoArquivo << x << " ";
 }
 
 void montador(char *argv[])
@@ -460,7 +509,6 @@ void preProcessor(char *argv[])
         }
         else if (sequenciaLinhaToken[j + 1].compare("equ") == 0)
         {
-          cout << "ACHEI EQU :)" << endl;
           token.erase(token.size() - 1);
           equ_labels.emplace(token, sequenciaLinhaToken[j + 2]);
           novaLinha = "";
@@ -469,17 +517,19 @@ void preProcessor(char *argv[])
       }
       else if (token.compare("if") == 0)
       {
-        if (sequenciaLinhaToken[j + 1] == "0")
+        cout << "antes do i++ " << sequenciaLinhaToken[j + 1] << endl;
+        if (equ_labels.at(sequenciaLinhaToken[j + 1]) == "0")
         {
+          cout << "entrou i++" << endl;
           i++;
         }
         novaLinha == "";
         break;
       }
-      // else if (token[0] == ';' || token == "secao")
-      // {
-      //   break;
-      // }
+      else if (token[0] == ';')
+      {
+        break;
+      }
       else if (achadoNoMap(token, equ_labels))
       {
         token = equ_labels.at(token);

@@ -10,5 +10,4 @@ load aux
 jmp fat
 secao dados
 aux: space
-axu2: const 0x
 end
