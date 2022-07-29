@@ -255,7 +255,7 @@ void segundaPassagem(
   string aux, linha, token, novaLinha;
   vector<string> sequenciaLinhaToken;
   vector<int> codigoObjeto;
-  int contadorLinha = 0, contadorPosicao = 0, simbolosNaLinha = 0;
+  int contadorLinha = 0, contadorPosicao = 0, simbolosNaLinha = 0, secaoDados = -1;
   unordered_map<string, vector<int>> tabelaUso;
 
   while (getline(file, aux))
@@ -276,7 +276,8 @@ void segundaPassagem(
     for (int j = 0; j < sequenciaLinhaToken.size(); j++)
     {
       token = sequenciaLinhaToken[j];
-      if (token[token.size()-1] == ',') token.erase(token.size() - 1);
+      if (token[token.size() - 1] == ',')
+        token.erase(token.size() - 1);
       cout << i + 1 << " " << token << endl;
       cout << contadorPosicao << endl;
       // caso label
@@ -372,8 +373,14 @@ void segundaPassagem(
       }
       else
       {
+        //cout << token << endl;
+        if (j+1 < sequenciaLinhaToken.size() && sequenciaLinhaToken[j + 1] == "dados")
+        {
+          secaoDados = contadorPosicao;
+        }
         if (token != "begin" && token != "end" && token != "public" && token != "secao" && token != "extern")
         {
+
           cout << "Erro sintático"
                << " (" << i + 1 << ")"
                << ": "
@@ -397,22 +404,37 @@ void segundaPassagem(
   //   cout << endl;
   // }
 
-  novoArquivo << "TABELA USO" << "\n";
-  for (auto x : tabelaUso)
+  if (tabelaUso.size())
   {
-    for (auto y : x.second)
+    novoArquivo << "TABELA USO"
+                << "\n";
+    for (auto x : tabelaUso)
     {
-      novoArquivo << x.first << " ";
-      novoArquivo << y << "\n";
+      for (auto y : x.second)
+      {
+        novoArquivo << x.first << " ";
+        novoArquivo << y << "\n";
+      }
     }
+    novoArquivo << "\n";
   }
 
-  novoArquivo << "\n";
-  novoArquivo << "TABELA DEF" << "\n";
-  for (auto x : tabelaDefinicao)
-    novoArquivo << x.first << " " << x.second << "\n";
+  if (tabelaDefinicao.size())
+  {
+    novoArquivo << "TABELA DEF"
+                << "\n";
+    for (auto x : tabelaDefinicao)
+      novoArquivo << x.first << " " << x.second << "\n";
 
-  novoArquivo << "\n";
+    novoArquivo << "\n";
+  }
+
+  if (tabelaDefinicao.size() || tabelaUso.size())
+  {
+    novoArquivo << "SECAO DADOS INICIO" 
+                << "\n";
+    novoArquivo << secaoDados << "\n\n";
+  }
 
   for (auto x : codigoObjeto)
     novoArquivo << x << " ";
