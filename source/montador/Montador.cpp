@@ -13,6 +13,7 @@
 
 using namespace std;
 
+//Recebe uma linha do arquivo em string e retorna os tokens em um vetor
 vector<string> pegaTokens(string linha)
 {
   vector<string> tokens;
@@ -31,19 +32,14 @@ vector<string> pegaTokens(string linha)
   return tokens;
 }
 
-bool achadoNoMap(string token, unordered_map<string, string> map)
-{
-  if (map.find(token) == map.end())
-    return false;
-
-  return true;
-}
-
+//Veirifica se um label eh invalido
 bool characterInvalido(string token)
 {
+  //Checa se o primeiro char eh um numero
   if (token[0] >= 48 && token[0] <= 57)
     return true;
 
+  //Checa se o label possui apenas letras, numeros ou "_"
   for (int i = 0; i < token.size(); i++)
   {
     if ((token.at(i) < 48 || token.at(i) > 57) && (token.at(i) < 97 || token.at(i) > 122) && token.at(i) != 95)
@@ -52,8 +48,10 @@ bool characterInvalido(string token)
   return false;
 }
 
+// Verificacao se a string eh um numero valido (considerando formato hex)
 bool naoNumero(string token)
 {
+  // numero hex
   if (token[0] == '0' && token[1] == 'x')
   {
     if (token.size() <= 2)
@@ -69,7 +67,7 @@ bool naoNumero(string token)
     }
   }
   else
-  {
+  { // numero decimal
     for (int i = 0; i < token.size(); i++)
     {
       if (token.at(i) < 48 || token.at(i) > 57)
@@ -80,6 +78,7 @@ bool naoNumero(string token)
   return false;
 }
 
+//Algoritmo de primeira passagem para o montador
 void primeiraPassagem(
     string caminhoArquivo,
     unordered_map<string, pair<int, int>> tabelaInstrucoes,
@@ -96,29 +95,33 @@ void primeiraPassagem(
   bool secaoTextoPresente;
   string secaoAtual = "";
 
+  //Armazena todo o arquivo em RAM
   while (getline(file, aux))
   {
     str.push_back(aux);
   }
 
+  //Percorre cada linha do arquivo salvo
   for (int i = 0; i < str.size(); i++)
   {
     string linha = str[i];
 
-    if (linha.compare("") == 0)
+    if (linha.compare("") == 0) //linha vazia
       continue;
 
     sequenciaLinhaToken = pegaTokens(linha);
 
-    for (int j = 0; j < sequenciaLinhaToken.size(); j++)
+    //Percorre todos os tokens da linha atual
+    for (int j = 0; j < sequenciaLinhaToken.size(); j++) 
     {
       token = sequenciaLinhaToken[j];
 
-      // caso label
+      // caso seja um label
       if (token[token.size() - 1] == ':')
       {
-        token.erase(token.size() - 1);
-        if (tabelaSimbolos.find(token) != tabelaSimbolos.end())
+        token.erase(token.size() - 1); //remove o :
+        //Redeclaracao de label
+        if (tabelaSimbolos.find(token) != tabelaSimbolos.end()) 
         {
           cout << "Erro semântico"
                << " (" << i + 1 << ")"
@@ -127,18 +130,19 @@ void primeiraPassagem(
         }
         else
         {
-          if (sequenciaLinhaToken[j + 1] == "extern")
+          if (sequenciaLinhaToken[j + 1] == "extern") //trata da diretiva extern
           {
             tabelaSimbolos.emplace(token, make_pair(0, true));
             break;
           }
-          else
+          else //Adiciona o label a tabela de simbolos
             tabelaSimbolos.emplace(token, make_pair(contadorPosicao, false));
         }
       }
+      //Verifica se o token eh uma instrucao
       else if (tabelaInstrucoes.find(token) != tabelaInstrucoes.end())
       {
-        if (secaoAtual != "texto")
+        if (secaoAtual != "texto") 
         {
           cout << "Erro semântico"
                << " (" << i + 1 << ")"
@@ -148,6 +152,7 @@ void primeiraPassagem(
         contadorPosicao += tabelaInstrucoes.at(token).second;
         break;
       }
+      //Verifica se o token eh uma das diretivas de alocacao de memoria // const e space
       else if (tabelaDiretiva.find(token) != tabelaDiretiva.end())
       {
         if (secaoAtual != "dados")
@@ -160,6 +165,7 @@ void primeiraPassagem(
         contadorPosicao += tabelaDiretiva.at(token);
         break;
       }
+      //Trata da diretiva public
       else if (token == "public")
       {
         if (tabelaDefinicao.find(sequenciaLinhaToken[j + 1]) != tabelaDefinicao.end())
@@ -173,6 +179,7 @@ void primeiraPassagem(
           tabelaDefinicao.emplace(sequenciaLinhaToken[j + 1], 0);
         break;
       }
+      //Verifica qual a secao atual
       else if (token == "secao")
       {
         secaoAtual = sequenciaLinhaToken[j + 1];
@@ -189,6 +196,7 @@ void primeiraPassagem(
         }
         break;
       }
+      //Verifica se eh um token desconhecido
       else
       {
         if (token != "begin" && token != "end")
@@ -201,10 +209,12 @@ void primeiraPassagem(
         break;
       }
     }
-    cout << i + 1 << " " << token << endl;
-    cout << contadorPosicao << endl;
+    // print contador posicao mais linhas
+    // cout << i + 1 << " " << token << endl;
+    // cout << contadorPosicao << endl;
   }
 
+  //Preenche os enderecos da tabela de definicao baseada na tabela de simbolos
   for (auto &x : tabelaDefinicao)
   {
     if (tabelaSimbolos.find(x.first) != tabelaSimbolos.end())
@@ -219,6 +229,7 @@ void primeiraPassagem(
     }
   }
 
+  //Verifica se tem sessao texto 
   if (!secaoTextoPresente)
   {
     cout << "Erro sintático"
@@ -255,35 +266,51 @@ void segundaPassagem(
   string aux, linha, token, novaLinha;
   vector<string> sequenciaLinhaToken;
   vector<int> codigoObjeto;
-  int contadorLinha = 0, contadorPosicao = 0, simbolosNaLinha = 0, secaoDados = -1;
+  int contadorLinha = 0, contadorPosicao = 0, simbolosNaLinha = 0, secaoDados = -1, i, dec = 1;
   unordered_map<string, vector<int>> tabelaUso;
 
+  bool isModule = false, isCopy = false;
+  // armazenando o arquivo
   while (getline(file, aux))
   {
     str.push_back(aux);
-  }
-
-  for (int i = 0; i < str.size(); i++)
+  };
+  // passando por cada token, e definindo cada caso
+  for (i = 0; i < str.size(); i++)
   {
     string linha = str[i];
 
     if (linha.compare("") == 0)
       continue;
 
+    // sequencia de tokens definida
     sequenciaLinhaToken = pegaTokens(linha);
     simbolosNaLinha = sequenciaLinhaToken.size();
 
     for (int j = 0; j < sequenciaLinhaToken.size(); j++)
     {
+      // definindo token a ser analizado
       token = sequenciaLinhaToken[j];
       if (token[token.size() - 1] == ',')
+      {
         token.erase(token.size() - 1);
-      cout << i + 1 << " " << token << endl;
-      cout << contadorPosicao << endl;
+        isCopy = true;
+      }
+      // print contador posicao e linhas
+      // cout << i + 1 << " " << token << endl;
+      // cout << contadorPosicao << endl;
+
       // caso label
       if (token[token.size() - 1] == ':')
       {
         token.erase(token.size() - 1);
+        if (j != 0)
+        {
+          cout << "Erro sintático"
+               << " (" << i + 1 << ")"
+               << ": "
+               << "Declaracao de label em local invalido: " << token << "\n";
+        }
         if (characterInvalido(token))
         {
           cout << "Erro léxico label"
@@ -294,6 +321,7 @@ void segundaPassagem(
         simbolosNaLinha--;
         continue;
       }
+      // procurando token na tabela de instrucoes
       else if (tabelaInstrucoes.find(token) != tabelaInstrucoes.end())
       {
         if (tabelaInstrucoes.at(token).second != simbolosNaLinha)
@@ -306,6 +334,7 @@ void segundaPassagem(
         codigoObjeto.push_back(tabelaInstrucoes.at(token).first);
         contadorPosicao += tabelaInstrucoes.at(token).second;
       }
+      // procurando token na tabela diretiva
       else if (tabelaDiretiva.find(token) != tabelaDiretiva.end())
       {
         if (token == "space")
@@ -323,7 +352,6 @@ void segundaPassagem(
         }
         if (token == "const")
         {
-          cout << "entrou no const\n";
           if (simbolosNaLinha != 2)
           {
             cout << "Erro sintático"
@@ -346,6 +374,7 @@ void segundaPassagem(
           break;
         }
       }
+      // procurando token na tabela de simbolos
       else if (tabelaSimbolos.find(token) != tabelaSimbolos.end())
       {
         if (characterInvalido(token))
@@ -360,25 +389,40 @@ void segundaPassagem(
           if (tabelaUso.find(token) == tabelaUso.end())
           { // novo caso
             vector<int> aux;
-            aux.push_back(contadorPosicao);
+            aux.push_back(contadorPosicao - (isCopy ? 2 : 1));
             tabelaUso.emplace(token, aux);
           }
           else
           { // já presente na tabela de uso
-            tabelaUso.at(token).push_back(contadorPosicao);
+            tabelaUso.at(token).push_back(contadorPosicao - (isCopy ? 2 : 1));
           }
+          isCopy = false;
         }
         codigoObjeto.push_back(tabelaSimbolos.at(token).first);
-        cout << "simbolo: " << token << " " << contadorPosicao << endl;
       }
+      // tokens nao encontrados ou referentes a secao
       else
       {
-        //cout << token << endl;
-        if (j+1 < sequenciaLinhaToken.size() && sequenciaLinhaToken[j + 1] == "dados")
+        // cout << token << endl;
+        if (j + 1 < sequenciaLinhaToken.size() && sequenciaLinhaToken[j + 1] == "dados")
         {
           secaoDados = contadorPosicao;
         }
-        if (token != "begin" && token != "end" && token != "public" && token != "secao" && token != "extern")
+        else if (token == "begin")
+        {
+          isModule = true;
+        }
+        else if (token == "end")
+        {
+          if (!isModule)
+          {
+            cout << "Erro semantico"
+                 << " (" << i + 1 << ")"
+                 << ": "
+                 << "End sem um begin correspondente\n";
+          }
+        }
+        else if (token != "public" && token != "extern" && token != "secao")
         {
 
           cout << "Erro sintático"
@@ -388,6 +432,17 @@ void segundaPassagem(
         }
         break;
       }
+    }
+  }
+
+  if (isModule)
+  {
+    if (token != "end")
+    {
+      cout << "Erro semantico"
+           << " (" << i + 1 << ")"
+           << ": "
+           << "Begin sem um end correspondente\n";
     }
   }
 
@@ -404,7 +459,8 @@ void segundaPassagem(
   //   cout << endl;
   // }
 
-  if (tabelaUso.size())
+  // preenchendo tabelas para o ligador se modulo
+  if (isModule)
   {
     novoArquivo << "TABELA USO"
                 << "\n";
@@ -417,29 +473,25 @@ void segundaPassagem(
       }
     }
     novoArquivo << "\n";
-  }
 
-  if (tabelaDefinicao.size())
-  {
     novoArquivo << "TABELA DEF"
                 << "\n";
     for (auto x : tabelaDefinicao)
       novoArquivo << x.first << " " << x.second << "\n";
 
     novoArquivo << "\n";
-  }
 
-  if (tabelaDefinicao.size() || tabelaUso.size())
-  {
-    novoArquivo << "SECAO DADOS INICIO" 
+    novoArquivo << "SECAO DADOS INICIO"
                 << "\n";
     novoArquivo << secaoDados << "\n\n";
   }
 
+  // escrevendo o codigo objeto no novo arquivo
   for (auto x : codigoObjeto)
     novoArquivo << x << " ";
 }
 
+//Funcao do montado "-o"
 void montador(char *argv[])
 {
   unordered_map<string, pair<int, int>> tabelaInstrucoes = {
@@ -459,6 +511,7 @@ void montador(char *argv[])
       {"stop", make_pair(14, 1)},
   };
 
+  //Tabela de diretivas apenas com as diretivas de alocacao de memoria
   unordered_map<string, int> tabelaDiretiva = {
       {"space", 1},
       {"const", 1},
@@ -467,18 +520,10 @@ void montador(char *argv[])
   unordered_map<string, int> tabelaDefinicao;
   unordered_map<string, pair<int, bool>> tabelaSimbolos;
   primeiraPassagem(argv[2], tabelaInstrucoes, tabelaDiretiva, tabelaSimbolos, tabelaDefinicao);
-
-  cout << "Tabela de simbolos" << endl;
-  for (auto x : tabelaSimbolos)
-    cout << x.first << " primeiro: " << x.second.first << " segundo: " << x.second.second << endl;
-
-  cout << "Tabela de definicao" << endl;
-  for (auto x : tabelaDefinicao)
-    cout << x.first << " " << x.second << endl;
-
   segundaPassagem(argv[2], argv[3], tabelaInstrucoes, tabelaDiretiva, tabelaSimbolos, tabelaDefinicao);
 }
 
+//Funcao de pre processamento "-p"
 void preProcessor(char *argv[])
 {
   ifstream file(argv[2]); // arquivo de leitura
@@ -529,6 +574,7 @@ void preProcessor(char *argv[])
           novaLinha = "";
           break;
         }
+        // caso label de EQU
         else if (sequenciaLinhaToken[j + 1].compare("equ") == 0)
         {
           token.erase(token.size() - 1);
@@ -537,31 +583,33 @@ void preProcessor(char *argv[])
           break;
         }
       }
+      // caso IF analisar EQU e decidir a linha
       else if (token.compare("if") == 0)
       {
-        cout << "antes do i++ " << sequenciaLinhaToken[j + 1] << endl;
         if (equ_labels.at(sequenciaLinhaToken[j + 1]) == "0")
         {
-          cout << "entrou i++" << endl;
           i++;
         }
         novaLinha == "";
         break;
       }
+      // retirando comentarios
       else if (token[0] == ';')
       {
         break;
       }
-      else if (achadoNoMap(token, equ_labels))
+      else if (equ_labels.find(token) != equ_labels.end())
       {
         token = equ_labels.at(token);
       }
-
+      
+      // definindo linha a ser escrita
       if (j != 0)
         novaLinha += " ";
       novaLinha += token;
     }
 
+    // escrevendo a linha e zerando o valor para a proxima
     if (novaLinha != "")
     {
       novoArquivo << novaLinha << "\n";
